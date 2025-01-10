@@ -1,30 +1,47 @@
-# Utilisez une image Docker officielle pour PHP 7.4 avec Apache
-FROM php:7.4-apache
+FROM php:8.2-apache
 
-# Installez les extensions PHP nécessaires
-RUN docker-php-ext-install pdo_mysql
+# Installation des dépendances système et extensions PHP
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    zip \
+    libzip-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql zip
 
-RUN apt-get update && apt-get install -y git unzip p7zip-full
-
-# Installez Composer
+# Installation de Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copiez les fichiers de l'application dans le conteneur
-COPY . /var/www/html/
+# Configuration du répertoire de travail
+WORKDIR /var/www/html
 
-# Installez les dépendances de l'application
-RUN composer install
+# Copie des fichiers du projet
+COPY . .
 
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-RUN chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
+# Installation des dépendances
+RUN composer install --no-interaction --no-dev --optimize-autoloader
 
-# Modifiez la configuration d'Apache pour pointer vers le répertoire public
+# Permissions pour Laravel
+RUN chown -R www-data:www-data \
+    /var/www/html/storage \
+    /var/www/html/bootstrap/cache
+RUN chmod -R 775 \
+    /var/www/html/storage \
+    /var/www/html/bootstrap/cache
+
+# Configuration d'Apache
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Activez le module Apache Rewrite
-RUN a2enmod rewrite
+# Activation des modules Apache nécessaires
+RUN a2enmod rewrite headers
 
-# Exposez le port 80
+# Port d'exposition
 EXPOSE 80
+
+# Commande de démarrage
+CMD ["apache2-foreground"]

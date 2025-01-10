@@ -1,32 +1,66 @@
-# Sample app
+# Laravel sur Azure avec Terraform
 
-- Utilise une base mysql
-- Site en PHP
-- Gestion schéma DB 
-- Tests
-- Déploiement kube
+Ce projet est une application Laravel configurée pour être déployée sur Azure App Service via Terraform et GitHub Actions.
 
-## Avant tout votre fichier .env 
+## Prérequis
 
-Créer un fichier .env dans le dossier sample-app du repo
+- Un compte Azure avec un abonnement actif
+- Terraform installé localement
+- Git installé localement
+- Docker installé localement
 
-```conf
-DB_CONNECTION=mysql
-DB_HOST=xxx.xxx.xxx.xxx
-DB_PORT=3306
-DB_DATABASE=db_name
-DB_USERNAME=username
-DB_PASSWORD=passwd
+## Configuration
+
+1. Créez les secrets GitHub suivants dans votre repository :
+
+```
+AZURE_CREDENTIALS - Les credentials Azure Service Principal
+REGISTRY_LOGIN_SERVER - L'URL de votre Azure Container Registry
+REGISTRY_USERNAME - Le nom d'utilisateur de votre ACR
+REGISTRY_PASSWORD - Le mot de passe de votre ACR
 ```
 
-## Création du schéma 
+2. Configurez les variables d'environnement dans le fichier `.env` :
 
 ```bash
-php artisan migrate
+cp .env.example .env
+php artisan key:generate
 ```
 
-## Seed du jeu de données 
+## Déploiement
 
+Le déploiement est automatisé via GitHub Actions. À chaque push sur la branche main :
+
+1. L'image Docker est construite et poussée vers Azure Container Registry
+2. Terraform crée/met à jour l'infrastructure sur Azure
+3. L'application est déployée sur Azure App Service
+
+## Infrastructure
+
+L'infrastructure créée comprend :
+- Un groupe de ressources
+- Un Azure Container Registry
+- Un App Service Plan
+- Une App Service
+
+## Développement local
+
+1. Installez les dépendances :
 ```bash
-php artisan db:seed
+composer install
 ```
+
+2. Lancez l'application avec Docker :
+```bash
+docker-compose up -d
+```
+
+3. L'application sera disponible sur `http://localhost:8000`
+
+## Variables Terraform
+
+Les variables suivantes sont nécessaires pour le déploiement :
+- `docker_image`
+- `docker_registry_url`
+- `docker_registry_username`
+- `docker_registry_password`
